@@ -45,6 +45,6 @@ No external frameworks used.
 
 ## 🚀 Live Demo
 
-> Add your live demo link here  
+> Live demo link below 
 ```txt
 https://g-dev22.github.io/My-Portfolio/
