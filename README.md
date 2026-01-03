@@ -47,4 +47,4 @@ No external frameworks used.
 
 > Add your live demo link here  
 ```txt
-[https://your-live-site-link.com](https://g-dev22.github.io/My-Portfolio/)
+https://g-dev22.github.io/My-Portfolio/
