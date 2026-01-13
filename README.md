@@ -47,4 +47,4 @@ No external frameworks used.
 
 > Live demo link below 
 ```txt
-https://g-dev22.github.io/My-Portfolio/
+https://gurmeetgupta22.github.io/My-Portfolio/
