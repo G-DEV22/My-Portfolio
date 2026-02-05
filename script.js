@@ -1,151 +1,435 @@
 document.addEventListener('DOMContentLoaded', function() {
     // ============================================
-    // LOADING SCREEN - HIGH-DENSITY LOGO POP
+    // CUSTOM CURSOR (Shows alongside default cursor)
+    // ============================================
+    const customCursor = document.createElement('div');
+    customCursor.className = 'custom-cursor';
+    document.body.appendChild(customCursor);
+
+    const cursorDot = document.createElement('div');
+    cursorDot.className = 'cursor-dot';
+    document.body.appendChild(cursorDot);
+
+    let mouseX = window.innerWidth / 2;
+    let mouseY = window.innerHeight / 2;
+    let cursorX = mouseX;
+    let cursorY = mouseY;
+    let dotX = mouseX;
+    let dotY = mouseY;
+    
+    // Show custom cursors after loading
+    setTimeout(() => {
+        customCursor.style.display = 'block';
+        cursorDot.style.display = 'block';
+    }, 500);
+
+    // ============================================
+    // STAR BACKGROUND MOVEMENT WITH CURSOR (FIXED)
+    // ============================================
+    let starParallaxEnabled = false;
+    const starLayers = [];
+    
+    // Store original star positions
+    const starBasePositions = [];
+
+    function initializeStars() {
+        const stars = document.querySelectorAll('.stars');
+        starLayers.length = 0;
+        starBasePositions.length = 0;
+        
+        stars.forEach((starLayer, index) => {
+            // Save reference to each layer
+            starLayers.push({
+                element: starLayer,
+                depth: (index + 1) * 0.3, // Different sensitivity for each layer
+                originalTransform: getComputedStyle(starLayer).transform
+            });
+            
+            // Store base animation position
+            starBasePositions[index] = {
+                x: 0,
+                y: 0,
+                animationOffset: index * 1000 // Different start for each layer
+            };
+        });
+        
+        starParallaxEnabled = true;
+        console.log(`Initialized ${starLayers.length} star layers for parallax`);
+    }
+
+    let lastStarUpdate = 0;
+    const starUpdateInterval = 16; // Update stars every ~16ms (60fps max)
+    
+    function updateStarPositions() {
+        if (!starParallaxEnabled || starLayers.length === 0) return;
+        
+        const now = Date.now();
+        if (now - lastStarUpdate < starUpdateInterval) return;
+        lastStarUpdate = now;
+        
+        const centerX = window.innerWidth / 2;
+        const centerY = window.innerHeight / 2;
+        
+        // Calculate normalized mouse position (-1 to 1)
+        const mousePercentX = (mouseX - centerX) / centerX;
+        const mousePercentY = (mouseY - centerY) / centerY;
+        
+        // Calculate rotation angle based on mouse position (reduced for performance)
+        const rotationAngle = mousePercentX * 10; // Reduced from 15 to 10 degrees
+        
+        // Cache time calculation
+        const time = now / 1000;
+        
+        // Update each star layer with optimized transform
+        starLayers.forEach((layer, index) => {
+            const basePos = starBasePositions[index];
+            
+            // Calculate parallax movement (reduced for performance)
+            const parallaxX = mousePercentX * 40 * layer.depth; // Reduced from 60 to 40
+            const parallaxY = mousePercentY * 40 * layer.depth;
+            
+            // Simplified wave animation
+            const waveX = Math.sin(time * 0.1 + basePos.animationOffset) * 3;
+            const waveY = Math.cos(time * 0.15 + basePos.animationOffset) * 3;
+            
+            // Simplified drift
+            const drift = (time * 10) % 200;
+            
+            // Calculate rotation for this layer
+            const layerRotation = rotationAngle * layer.depth;
+            
+            // Apply transform using translate3d for hardware acceleration
+            const translateX = parallaxX + waveX;
+            const translateY = parallaxY + waveY - drift;
+            
+            layer.element.style.transform = `translate3d(${translateX}px, ${translateY}px, 0) rotate(${layerRotation}deg)`;
+        });
+    }
+
+    // Track mouse movement with throttling
+    let lastMouseUpdate = 0;
+    const mouseUpdateInterval = 16; // Throttle to ~60fps
+    
+    document.addEventListener('mousemove', function(e) {
+        const now = Date.now();
+        if (now - lastMouseUpdate < mouseUpdateInterval) return;
+        lastMouseUpdate = now;
+        
+        mouseX = e.clientX;
+        mouseY = e.clientY;
+        
+        // Reduced comet creation frequency for performance
+        if (Math.random() > 0.9995) { // Changed from 0.998 to 0.9995
+            createComet(e.clientX, e.clientY);
+        }
+    });
+
+    // Create comet trail effect
+    function createComet(x, y) {
+        const comet = document.createElement('div');
+        comet.className = 'comet';
+        comet.style.left = `${x}px`;
+        comet.style.top = `${y}px`;
+        comet.style.width = '3px';
+        comet.style.height = '3px';
+        document.querySelector('.cosmic-background').appendChild(comet);
+        
+        // Animate comet
+        const animation = comet.animate([
+            { 
+                transform: 'translate(0, 0) scale(1)', 
+                opacity: 0,
+                boxShadow: '0 0 5px var(--pulsar-cyan)'
+            },
+            { 
+                transform: 'translate(0, 0) scale(2)', 
+                opacity: 1,
+                boxShadow: '0 0 15px var(--pulsar-cyan)'
+            },
+            { 
+                transform: `translate(${Math.random() * 100 - 50}px, ${Math.random() * 100 - 50}px) scale(0.5)`, 
+                opacity: 0,
+                boxShadow: '0 0 5px var(--pulsar-cyan)'
+            }
+        ], {
+            duration: 1500 + Math.random() * 1000,
+            easing: 'cubic-bezier(0.4, 0, 0.2, 1)'
+        });
+        
+        animation.onfinish = () => comet.remove();
+    }
+
+    // Smooth cursor animation
+    function animateCursor() {
+        cursorX += (mouseX - cursorX) * 0.15;
+        cursorY += (mouseY - cursorY) * 0.15;
+        customCursor.style.left = `${cursorX}px`;
+        customCursor.style.top = `${cursorY}px`;
+        
+        dotX += (mouseX - dotX) * 0.3;
+        dotY += (mouseY - dotY) * 0.3;
+        cursorDot.style.left = `${dotX}px`;
+        cursorDot.style.top = `${dotY}px`;
+        
+        // Update stars continuously for smooth animation
+        if (starParallaxEnabled) {
+            updateStarPositions();
+        }
+        
+        requestAnimationFrame(animateCursor);
+    }
+    
+    // Start cursor animation
+    animateCursor();
+
+    // Change cursor style on interactive elements
+    const interactiveElements = document.querySelectorAll('a, button, .project-card, .cosmic-element, .cosmic-node, .nav-link');
+    interactiveElements.forEach(element => {
+        element.addEventListener('mouseenter', () => {
+            customCursor.style.transform = 'scale(1.5)';
+            customCursor.style.borderColor = 'var(--supernova-red)';
+            customCursor.style.borderWidth = '3px';
+            
+            cursorDot.style.backgroundColor = 'var(--supernova-red)';
+            cursorDot.style.transform = 'scale(2)';
+        });
+        
+        element.addEventListener('mouseleave', () => {
+            customCursor.style.borderColor = 'var(--pulsar-cyan)';
+            customCursor.style.borderWidth = '2px';
+            customCursor.style.transform = 'scale(1)';
+            
+            cursorDot.style.backgroundColor = 'var(--pulsar-cyan)';
+            cursorDot.style.transform = 'scale(1)';
+        });
+    });
+
+    // ============================================
+    // COSMIC ELEMENT HOVER EFFECTS WITH PARTICLES
+    // ============================================
+    const cosmicElements = document.querySelectorAll('.cosmic-element');
+    
+    cosmicElements.forEach(element => {
+        element.addEventListener('mouseenter', function(e) {
+            // Create fewer particles for better performance
+            for (let i = 0; i < 4; i++) { // Reduced from 8 to 4
+                createParticle(e.currentTarget);
+            }
+            
+            // Add pulsing animation
+            this.style.animation = 'pulse 1s ease-in-out infinite';
+        });
+        
+        element.addEventListener('mouseleave', function() {
+            this.style.animation = '';
+        });
+        
+        // Throttled mouse move effect for 3D tilt
+        let lastTiltUpdate = 0;
+        element.addEventListener('mousemove', function(e) {
+            const now = Date.now();
+            if (now - lastTiltUpdate < 50) return; // Throttle to 20fps
+            lastTiltUpdate = now;
+            
+            const rect = this.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            const centerX = rect.width / 2;
+            const centerY = rect.height / 2;
+            
+            const rotateX = (y - centerY) / 10;
+            const rotateY = (centerX - x) / 10;
+            
+            this.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) translateY(-15px) scale(1.05)`;
+        });
+        
+        element.addEventListener('mouseleave', function() {
+            this.style.transform = '';
+        });
+    });
+    
+    function createParticle(parent) {
+        const particle = document.createElement('div');
+        particle.className = 'tech-particle';
+        
+        const colors = ['#00f5d4', '#7b2cbf', '#ffd166', '#ef476f', '#00b4d8'];
+        const randomColor = colors[Math.floor(Math.random() * colors.length)];
+        
+        particle.style.position = 'absolute';
+        particle.style.width = '3px'; // Reduced from 4px
+        particle.style.height = '3px';
+        particle.style.background = randomColor;
+        particle.style.borderRadius = '50%';
+        particle.style.pointerEvents = 'none';
+        particle.style.boxShadow = `0 0 8px ${randomColor}`; // Reduced glow
+        
+        const rect = parent.getBoundingClientRect();
+        particle.style.left = `${rect.width / 2}px`;
+        particle.style.top = `${rect.height / 2}px`;
+        
+        parent.appendChild(particle);
+        
+        const angle = Math.random() * Math.PI * 2;
+        const velocity = 40 + Math.random() * 40; // Reduced from 50+50
+        const tx = Math.cos(angle) * velocity;
+        const ty = Math.sin(angle) * velocity;
+        
+        particle.animate([
+            { 
+                transform: 'translate(0, 0) scale(1)',
+                opacity: 1
+            },
+            { 
+                transform: `translate(${tx}px, ${ty}px) scale(0)`,
+                opacity: 0
+            }
+        ], {
+            duration: 600 + Math.random() * 300, // Reduced duration
+            easing: 'cubic-bezier(0, 0.55, 0.45, 1)'
+        }).onfinish = () => particle.remove();
+    }
+
+    // ============================================
+    // LOADING SCREEN WITH PROGRAMMING LANGUAGE LOGOS
     // ============================================
     const loadingScreen = document.getElementById('loading-screen');
     const mainContent = document.getElementById('main-content');
     const counterElement = document.getElementById('counter');
     const progressBar = document.getElementById('progress-bar');
-    const techLogos = document.querySelector('.tech-logos');
-    const randomLogosLayer = document.getElementById('random-logos-layer');
+    const terminalOutput = document.getElementById('terminal-output');
+    const logosLayer = document.getElementById('logos-layer');
 
-    // Create tech logos with FontAwesome icons
-    const logos = [
-        { icon: 'fab fa-html5', delay: 0 },
-        { icon: 'fab fa-css3-alt', delay: 0.2 },
-        { icon: 'fab fa-js', delay: 0.4 },
-        { icon: 'fab fa-python', delay: 0.6 },
-        { icon: 'fab fa-git-alt', delay: 0.8 },
-        { icon: 'fas fa-code', delay: 1.0 },
-        { icon: 'fab fa-github', delay: 1.2 },
-        { icon: 'fas fa-brain', delay: 1.4 },
-        { icon: 'fab fa-react', delay: 0.15 },
-        { icon: 'fab fa-node-js', delay: 0.35 },
-        { icon: 'fab fa-npm', delay: 0.55 },
-        { icon: 'fas fa-database', delay: 0.75 },
-        { icon: 'fab fa-docker', delay: 0.95 },
-        { icon: 'fas fa-terminal', delay: 1.15 },
-        { icon: 'fab fa-linux', delay: 1.35 },
-        { icon: 'fas fa-laptop-code', delay: 1.55 },
-        { icon: 'fab fa-html5', delay: 0.1 },
-        { icon: 'fab fa-css3-alt', delay: 0.3 },
-        { icon: 'fab fa-js', delay: 0.5 },
-        { icon: 'fab fa-python', delay: 0.7 },
-        { icon: 'fab fa-git-alt', delay: 0.9 },
-        { icon: 'fas fa-code', delay: 1.1 },
-        { icon: 'fab fa-github', delay: 1.3 },
-        { icon: 'fas fa-brain', delay: 1.5 },
-        { icon: 'fab fa-react', delay: 0.25 },
-        { icon: 'fab fa-node-js', delay: 0.45 },
-        { icon: 'fab fa-npm', delay: 0.65 },
-        { icon: 'fas fa-database', delay: 0.85 },
-        { icon: 'fab fa-docker', delay: 1.05 },
-        { icon: 'fas fa-terminal', delay: 1.25 },
-        { icon: 'fab fa-linux', delay: 1.45 },
-        { icon: 'fas fa-laptop-code', delay: 1.65 }
+    const bootMessages = [
+        "> Booting Cosmic Developer Interface...",
+        "> Initializing Neural Networks...",
+        "> Loading AI Core Modules...",
+        "> Mounting Educational Databases...",
+        "> Starting StudentStack Service...",
+        "> Launching StudMaster AI...",
+        "> Connecting to GitHub Nebula...",
+        "> Loading Project Galaxies...",
+        "> System Integrity: STABLE",
+        "> Memory Allocation: 16GB ✓",
+        "> GPU Acceleration: ENABLED ✓",
+        "> Welcome to Cosmic Dev Environment",
+        "> All Systems: OPERATIONAL"
     ];
 
-    logos.forEach((logo, index) => {
-        const logoElement = document.createElement('i');
-        logoElement.className = `tech-logo ${logo.icon}`;
-
-        const left = 5 + (index % 8) * 12;
-        const top = 5 + Math.floor(index / 8) * 25;
-
-        logoElement.style.left = `${left}%`;
-        logoElement.style.top = `${top}%`;
-
-        techLogos.appendChild(logoElement);
-
-        setInterval(() => {
-            logoElement.classList.add('active');
-            setTimeout(() => {
-                logoElement.classList.remove('active');
-            }, 1200);
-        }, 1800 + logo.delay * 1000);
-
-        setTimeout(() => {
-            logoElement.classList.add('active');
-        }, 200 + logo.delay * 1000);
-    });
-
-    // High-Density Random Logo Pop - Tied to Loading Progress
-    const iconsList = [
-        'fab fa-html5', 'fab fa-css3-alt', 'fab fa-js', 'fab fa-python',
-        'fab fa-git-alt', 'fas fa-code', 'fab fa-github', 'fas fa-brain',
-        'fab fa-react', 'fab fa-node-js', 'fab fa-npm', 'fas fa-database',
-        'fab fa-docker', 'fas fa-terminal', 'fab fa-linux', 'fas fa-laptop-code'
+    const programmingLogos = [
+        'fab fa-python', 'fab fa-js', 'fab fa-java', 'fab fa-html5',
+        'fab fa-css3-alt', 'fab fa-react', 'fab fa-node-js', 'fab fa-git-alt',
+        'fab fa-github', 'fab fa-npm', 'fab fa-docker', 'fab fa-linux',
+        'fab fa-windows', 'fab fa-apple', 'fas fa-database', 'fas fa-code',
+        'fas fa-terminal', 'fas fa-cogs', 'fas fa-microchip', 'fas fa-robot',
+        'fas fa-brain', 'fas fa-network-wired', 'fas fa-server', 'fas fa-cloud',
+        'fab fa-aws', 'fab fa-google', 'fab fa-microsoft', 'fab fa-ubuntu'
     ];
 
-    let totalLogosSpawned = 0;
-    const TARGET_LOGOS = 150;
     let progress = 0;
+    let currentLine = 0;
+    let logosPopped = 0;
+    const TOTAL_LOGOS = 50;
 
-    function spawnRandomLogo() {
-        if (progress >= 100 || totalLogosSpawned >= TARGET_LOGOS) return;
-
-        const randomIcon = iconsList[Math.floor(Math.random() * iconsList.length)];
+    function popProgrammingLogo() {
+        if (logosPopped >= TOTAL_LOGOS) return;
+        
+        const randomIcon = programmingLogos[Math.floor(Math.random() * programmingLogos.length)];
         const randomX = Math.random() * 100;
         const randomY = Math.random() * 100;
-
-        const randomLogo = document.createElement('i');
-        randomLogo.className = `random-logo ${randomIcon}`;
-        randomLogo.style.left = `${randomX}%`;
-        randomLogo.style.top = `${randomY}%`;
-        randomLogo.style.fontSize = `${1.5 + Math.random() * 2}rem`;
-
-        randomLogo.classList.add('pop');
-        randomLogosLayer.appendChild(randomLogo);
-        totalLogosSpawned++;
-
-        setTimeout(() => {
-            randomLogo.remove();
-        }, 800);
+        const randomSize = 2 + Math.random() * 3;
+        
+        const logo = document.createElement('i');
+        logo.className = `programming-logo ${randomIcon}`;
+        logo.style.left = `${randomX}%`;
+        logo.style.top = `${randomY}%`;
+        logo.style.fontSize = `${randomSize}rem`;
+        
+        const colors = ['#00f5d4', '#7b2cbf', '#00b4d8', '#ffd166', '#ef476f'];
+        logo.style.color = colors[Math.floor(Math.random() * colors.length)];
+        
+        logo.classList.add('pop');
+        logosLayer.appendChild(logo);
+        logosPopped++;
+        
+        setTimeout(() => logo.remove(), 1500);
     }
 
-    function updateLoading() {
-        if (progress >= 100) {
-            // Fade out logos
-            document.querySelectorAll('.tech-logo').forEach(logo => {
-                logo.style.opacity = '0';
-                logo.style.transition = 'opacity 0.5s ease';
-            });
+    function typeWriter(text, element, callback) {
+        let i = 0;
+        element.textContent = '';
+        
+        function type() {
+            if (i < text.length) {
+                element.textContent += text.charAt(i);
+                i++;
+                setTimeout(type, 40);
+            } else if (callback) {
+                setTimeout(callback, 300);
+            }
+        }
+        type();
+    }
 
-            setTimeout(() => {
-                loadingScreen.style.opacity = '0';
-                loadingScreen.style.transition = 'opacity 0.5s ease';
+    function addTerminalLine(message, delay = 0) {
+        setTimeout(() => {
+            const line = document.createElement('div');
+            line.className = 'terminal-line';
+            terminalOutput.appendChild(line);
+            typeWriter(message, line);
+            
+            terminalOutput.scrollTop = terminalOutput.scrollHeight;
+        }, delay);
+    }
+
+    function simulateBoot() {
+        bootMessages.forEach((message, index) => {
+            addTerminalLine(message, index * 400);
+        });
+
+        const bootProgress = setInterval(() => {
+            progress += 2;
+            if (progress > 100) {
+                progress = 100;
+                clearInterval(bootProgress);
+                
+                addTerminalLine("> System Ready. Launching Interface...", 800);
                 
                 setTimeout(() => {
-                    loadingScreen.style.display = 'none';
-                    mainContent.classList.add('visible');
+                    loadingScreen.style.opacity = '0';
+                    loadingScreen.style.transition = 'opacity 0.8s ease';
                     
-                    startPuzzleSnake();
-                    startPacmanGame();
-                    initScrollReveal();
-                    initCoinFlip();
-                }, 500);
-            }, 800);
-            return;
-        }
-
-        progress += 0.7;
-        if (progress > 100) progress = 100;
-
-        counterElement.textContent = `${Math.floor(progress)}%`;
-        progressBar.style.width = `${progress}%`;
-
-        // Spawn logos based on progress (150 total logos as progress reaches 100%)
-        const logosToSpawn = Math.floor((progress / 100) * TARGET_LOGOS) - totalLogosSpawned;
-        for (let i = 0; i < logosToSpawn; i++) {
-            setTimeout(() => spawnRandomLogo(), i * 20);
-        }
-
-        requestAnimationFrame(updateLoading);
+                    setTimeout(() => {
+                        loadingScreen.style.display = 'none';
+                        mainContent.classList.add('visible');
+                        
+                        // Initialize star movement
+                        initializeStars();
+                        updateStarPositions();
+                        
+                        // Initialize main content features
+                        initScrollReveal();
+                        initOrbitAnimation();
+                        initTerminalAnimation();
+                        updateActiveNavLink();
+                        
+                        console.log('Stars initialized with cursor tracking');
+                    }, 800);
+                }, 1500);
+            }
+            
+            counterElement.textContent = `${progress}%`;
+            progressBar.style.width = `${progress}%`;
+            
+            const logosToPop = Math.floor((progress / 100) * TOTAL_LOGOS) - logosPopped;
+            for (let i = 0; i < logosToPop; i++) {
+                setTimeout(() => popProgrammingLogo(), i * 20);
+            }
+        }, 80);
     }
 
-    setTimeout(() => {
-        requestAnimationFrame(updateLoading);
-    }, 300);
+    // Start boot sequence
+    setTimeout(simulateBoot, 500);
 
     // ============================================
     // NAVIGATION
@@ -153,17 +437,18 @@ document.addEventListener('DOMContentLoaded', function() {
     const mobileMenuBtn = document.querySelector('.mobile-menu-btn');
     const navLinks = document.querySelector('.nav-links');
     const navLinksItems = document.querySelectorAll('.nav-link');
+    const menuBars = document.querySelectorAll('.menu-bar');
 
     mobileMenuBtn.addEventListener('click', function() {
         navLinks.classList.toggle('active');
-        const bars = document.querySelectorAll('.menu-bar');
-        bars.forEach(bar => bar.classList.toggle('active'));
+        menuBars.forEach(bar => bar.classList.toggle('active'));
     });
 
     navLinksItems.forEach(link => {
         link.addEventListener('click', function(e) {
             e.preventDefault();
             navLinks.classList.remove('active');
+            menuBars.forEach(bar => bar.classList.remove('active'));
 
             const targetId = this.getAttribute('href');
             if (targetId !== '#') {
@@ -182,338 +467,55 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // ============================================
-    // ENHANCED COIN FLIP - SCATTERED SNIPPETS
+    // ORBIT ANIMATION
     // ============================================
-    let coinClickCount = 0;
-    let isSpinning = false;
-
-    const codeSnippets = [
-        'console.log("Hello");',
-        '#include <stdio.h>',
-        'int main() {}',
-        'def hello(): pass',
-        'fn main() {}',
-        'func main() {}',
-        'public static void main(){}',
-        'print("Hello")',
-        'echo "Hello";',
-        'go run main.go',
-        'rustc main.rs',
-        'javac Main.java',
-        'gcc main.c',
-        'g++ main.cpp',
-        'python script.py',
-        'var x = 0;',
-        'let y = 1;',
-        'const z = 2;'
-    ];
-
-    function initCoinFlip() {
-        const coin = document.getElementById('flip-coin');
-        const coinLabel = document.querySelector('.coin-label');
-        const coinContainer = document.querySelector('.coin-container');
-
-        if (!coin) return;
-
-        coin.addEventListener('click', function() {
-            if (isSpinning) return;
-
-            isSpinning = true;
-            coinClickCount++;
-
-            coin.classList.add('spinning');
-            showScatteredSnippets(coinContainer);
-
-            const isHeads = coinClickCount % 2 === 1;
-            const finalRotation = isHeads ? 0 : 180;
-
-            setTimeout(() => {
-                coin.classList.remove('spinning');
-                coin.style.transform = `rotateY(${finalRotation}deg)`;
-                
-                if (isHeads) {
-                    coinLabel.textContent = 'Python - Click again';
-                } else {
-                    coinLabel.textContent = 'ChatGPT - Click again';
-                }
-
-                setTimeout(() => {
-                    isSpinning = false;
-                }, 400);
-            }, 600);
+    function initOrbitAnimation() {
+        const orbitRings = document.querySelectorAll('.orbit-ring');
+        orbitRings.forEach((ring, index) => {
+            ring.style.animationDuration = `${15 + index * 5}s`;
         });
+    }
 
-        coin.addEventListener('mouseenter', function() {
-            coinLabel.style.opacity = '1';
-        });
+    // ============================================
+    // DYNAMIC TERMINAL ANIMATION
+    // ============================================
+    function initTerminalAnimation() {
+        const terminalContent = document.querySelector('.terminal-content');
+        if (!terminalContent) return;
 
-        coin.addEventListener('mouseleave', function() {
-            if (!coin.matches(':active')) {
-                coinLabel.style.opacity = '0.7';
+        const commands = [
+            "> Analyzing learning patterns...",
+            "> Generating AI recommendations...",
+            "> Updating neural networks...",
+            "> Processing educational data...",
+            "> Optimizing student paths...",
+            "> System Status: OPTIMAL"
+        ];
+
+        let commandIndex = 0;
+        
+        function typeCommand() {
+            const cursor = terminalContent.querySelector('.terminal-cursor');
+            const newLine = document.createElement('div');
+            newLine.className = 'terminal-line';
+            newLine.textContent = commands[commandIndex];
+            
+            const lines = terminalContent.querySelectorAll('.terminal-line');
+            if (lines.length > 8) {
+                lines[0].remove();
             }
-        });
-    }
-
-    function showScatteredSnippets(coinContainer) {
-        const container = document.getElementById('coin-snippets-container');
-        container.innerHTML = '';
-
-        const snippetCount = 15 + Math.floor(Math.random() * 10);
-        const containerRect = coinContainer.getBoundingClientRect();
-        const containerWidth = containerRect.width;
-        const containerHeight = containerRect.height;
-
-        for (let i = 0; i < snippetCount; i++) {
-            const snippet = document.createElement('div');
-            snippet.className = 'coin-snippet';
-
-            const randomCode = codeSnippets[Math.floor(Math.random() * codeSnippets.length)];
-            snippet.textContent = randomCode;
-
-            // Generate position with minimum distance from coin center
-            let validPosition = false;
-            let x, y;
-
-            while (!validPosition) {
-                x = Math.random() * 100;
-                y = Math.random() * 100;
-
-                // Calculate distance from center (50%, 50%)
-                const centerX = 50;
-                const centerY = 50;
-                const distX = Math.abs(x - centerX);
-                const distY = Math.abs(y - centerY);
-                const distance = Math.sqrt(distX * distX + distY * distY);
-
-                // Ensure minimum distance from coin
-                if (distance > 25) {
-                    validPosition = true;
-                }
-            }
-
-            snippet.style.left = `${x}%`;
-            snippet.style.top = `${y}%`;
-            snippet.style.animationDelay = `${i * 0.05}s`;
-
-            container.appendChild(snippet);
-
-            setTimeout(() => {
-                snippet.classList.add('active');
-            }, 10);
+            
+            terminalContent.insertBefore(newLine, cursor);
+            terminalContent.scrollTop = terminalContent.scrollHeight;
+            
+            commandIndex = (commandIndex + 1) % commands.length;
         }
-
-        setTimeout(() => {
-            const snippets = container.querySelectorAll('.coin-snippet');
-            snippets.forEach(s => {
-                s.style.opacity = '0';
-                s.style.transition = 'opacity 0.3s ease';
-            });
-        }, 800);
+        
+        setInterval(typeCommand, 5000);
     }
 
     // ============================================
-    // IMPROVED PROGRESSIVE SNAKE ANIMATION WITH TEXT
-    // ============================================
-    let puzzleSnakeAnimationId = null;
-    let snakeSegments = [];
-    let containerWidth = 0;
-    let containerHeight = 0;
-    let snakeHeadPosition = -100;
-    const SEGMENT_COUNT = 20;
-    const SEGMENT_SPACING = 30;
-    const SNAKE_SPEED = 2;
-    const TOTAL_SNAKE_LENGTH = SEGMENT_COUNT * SEGMENT_SPACING;
-    const TEXT_DELAY = 0.33; // Text appears after 1/3 of snake enters
-
-    function createPuzzleSnake() {
-        const container = document.querySelector('.puzzle-snake-container');
-        const segmentsContainer = document.getElementById('snake-segments');
-
-        if (!container || !segmentsContainer) return;
-
-        containerWidth = container.offsetWidth;
-        containerHeight = container.offsetHeight;
-
-        segmentsContainer.innerHTML = '';
-        snakeSegments = [];
-
-        for (let i = 0; i < SEGMENT_COUNT; i++) {
-            const segment = document.createElement('div');
-            segment.className = 'snake-segment';
-            segmentsContainer.appendChild(segment);
-            snakeSegments.push({
-                element: segment,
-                index: i,
-                pulseDelay: i * 0.08
-            });
-        }
-    }
-
-    function updatePuzzleSnake() {
-        if (!snakeSegments.length) return;
-
-        snakeHeadPosition += SNAKE_SPEED;
-
-        // Update segment positions - progressive follow
-        snakeSegments.forEach((segment, index) => {
-            const segmentTargetX = snakeHeadPosition - (index * SEGMENT_SPACING);
-            const segmentY = containerHeight / 2;
-
-            segment.element.style.left = `${segmentTargetX}px`;
-            segment.element.style.top = `${segmentY}px`;
-
-            // Pulsing animation
-            const pulseTime = (Date.now() * 0.003 + segment.pulseDelay) % (Math.PI * 2);
-            const pulseScale = 0.9 + Math.sin(pulseTime) * 0.1;
-            segment.element.style.transform = `translate(-50%, -50%) scale(${pulseScale})`;
-        });
-
-        // Text follows snake body - appears after 1/3 of snake enters
-        const textContainer = document.getElementById('snake-text-container');
-        const snakeBodyEnteredLength = Math.min(snakeHeadPosition, TOTAL_SNAKE_LENGTH);
-        const textTriggerPoint = TOTAL_SNAKE_LENGTH * TEXT_DELAY;
-
-        if (snakeBodyEnteredLength >= textTriggerPoint) {
-            // Position text on the snake body (around middle of snake)
-            const middleSegmentIndex = Math.floor(SEGMENT_COUNT / 2);
-            const textX = snakeHeadPosition - (middleSegmentIndex * SEGMENT_SPACING);
-            const textY = containerHeight / 2;
-            
-            textContainer.style.left = `${textX}px`;
-            textContainer.style.top = `${textY}px`;
-            textContainer.style.transform = 'translate(-50%, -50%)';
-            textContainer.style.opacity = '1';
-        } else {
-            textContainer.style.opacity = '0';
-        }
-
-        // Reset when snake completely exits screen
-        if (snakeHeadPosition > containerWidth + TOTAL_SNAKE_LENGTH) {
-            snakeHeadPosition = -TOTAL_SNAKE_LENGTH - 100;
-        }
-
-        puzzleSnakeAnimationId = requestAnimationFrame(updatePuzzleSnake);
-    }
-
-    function startPuzzleSnake() {
-        createPuzzleSnake();
-
-        if (puzzleSnakeAnimationId) {
-            cancelAnimationFrame(puzzleSnakeAnimationId);
-        }
-
-        snakeHeadPosition = -100;
-        updatePuzzleSnake();
-    }
-
-    // ============================================
-    // PAC-MAN GAME
-    // ============================================
-    const pacmanElement = document.getElementById('pacman');
-    const techBalls = document.querySelectorAll('.tech-ball');
-    const techSection = document.getElementById('tech');
-    const pacmanInstruction = document.querySelector('.pacman-instruction');
-
-    let pacmanPosition = -40;
-    let currentBallIndex = 0;
-    let gameActive = false;
-    let animationId = null;
-    let previousBallIndex = -1;
-
-    function startPacmanGame() {
-        if (gameActive) return;
-
-        gameActive = true;
-        pacmanPosition = -40;
-        currentBallIndex = 0;
-        previousBallIndex = -1;
-
-        techBalls.forEach(ball => {
-            ball.classList.remove('hidden');
-            ball.classList.add('visible');
-        });
-
-        movePacman();
-    }
-
-    function movePacman() {
-        if (!gameActive) return;
-
-        pacmanPosition += 3;
-        pacmanElement.style.left = `${pacmanPosition}px`;
-
-        if (previousBallIndex >= 0 && previousBallIndex !== currentBallIndex) {
-            const previousBall = techBalls[previousBallIndex];
-            const prevBallRect = previousBall.getBoundingClientRect();
-            const sectionRect = techSection.getBoundingClientRect();
-            const prevBallLeft = prevBallRect.left - sectionRect.left + prevBallRect.width / 2;
-            
-            if (Math.abs(pacmanPosition - prevBallLeft) > 100) {
-                previousBall.classList.remove('hidden');
-                previousBall.classList.add('visible');
-            }
-        }
-
-        if (currentBallIndex < techBalls.length) {
-            const currentBall = techBalls[currentBallIndex];
-            const ballRect = currentBall.getBoundingClientRect();
-            const sectionRect = techSection.getBoundingClientRect();
-            const ballLeft = ballRect.left - sectionRect.left + ballRect.width / 2;
-            
-            if (Math.abs(pacmanPosition - ballLeft) < 50) {
-                currentBall.classList.remove('visible');
-                currentBall.classList.add('hidden');
-                
-                previousBallIndex = currentBallIndex;
-                currentBallIndex = (currentBallIndex + 1) % techBalls.length;
-            }
-        }
-
-        if (pacmanPosition < techSection.offsetWidth + 40) {
-            animationId = requestAnimationFrame(movePacman);
-        } else {
-            gameActive = false;
-            
-            techBalls.forEach(ball => {
-                ball.classList.remove('hidden');
-                ball.classList.add('visible');
-            });
-            
-            setTimeout(() => {
-                startPacmanGame();
-            }, 1000);
-        }
-    }
-
-    function restartPacmanGame() {
-        if (animationId) {
-            cancelAnimationFrame(animationId);
-            animationId = null;
-        }
-
-        gameActive = false;
-        pacmanPosition = -40;
-        currentBallIndex = 0;
-        previousBallIndex = -1;
-
-        techBalls.forEach(ball => {
-            ball.classList.remove('hidden');
-            ball.classList.add('visible');
-        });
-
-        setTimeout(() => {
-            startPacmanGame();
-        }, 500);
-    }
-
-    techSection.addEventListener('click', restartPacmanGame);
-    pacmanInstruction.addEventListener('click', function(e) {
-        e.stopPropagation();
-        restartPacmanGame();
-    });
-
-    // ============================================
-    // SCROLL REVEAL
+    // SCROLL REVEAL EFFECTS
     // ============================================
     function initScrollReveal() {
         const observerOptions = {
@@ -526,11 +528,18 @@ document.addEventListener('DOMContentLoaded', function() {
             entries.forEach(entry => {
                 if (entry.isIntersecting) {
                     entry.target.classList.add('visible');
+                    
+                    if (entry.target.classList.contains('project-card') || 
+                        entry.target.classList.contains('cosmic-element') ||
+                        entry.target.classList.contains('cosmic-node')) {
+                        const delay = Array.from(entry.target.parentElement.children).indexOf(entry.target) * 0.1;
+                        entry.target.style.transitionDelay = `${delay}s`;
+                    }
                 }
             });
         }, observerOptions);
 
-        const revealElements = document.querySelectorAll('.scroll-reveal');
+        const revealElements = document.querySelectorAll('.scroll-reveal, .scroll-scale, .scroll-slide-left, .scroll-slide-right');
         revealElements.forEach(element => {
             observer.observe(element);
         });
@@ -565,19 +574,75 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    window.addEventListener('scroll', updateActiveNavLink);
-
     // ============================================
-    // WINDOW RESIZE HANDLER
+    // HANDLE WINDOW RESIZE
     // ============================================
-    window.addEventListener('resize', function() {
-        if (mainContent.classList.contains('visible')) {
-            startPuzzleSnake();
+    window.addEventListener('resize', () => {
+        if (starParallaxEnabled) {
+            updateStarPositions();
         }
     });
 
     // ============================================
-    // INITIALIZE ON LOAD
+    // DEMONSTRATE STAR MOVEMENT (Test Function)
     // ============================================
-    updateActiveNavLink();
+    function testStarMovement() {
+        console.log("Testing star movement... Move your cursor!");
+        console.log(`Mouse position: ${mouseX}, ${mouseY}`);
+        console.log(`Star layers: ${starLayers.length}`);
+    }
+
+    // Expose test function to console
+    window.testStars = testStarMovement;
+
+    // ============================================
+    // INITIALIZE EVERYTHING
+    // ============================================
+    window.addEventListener('scroll', updateActiveNavLink);
+    window.addEventListener('load', () => {
+        initTerminalAnimation();
+        updateActiveNavLink();
+        
+        // Add test button for debugging (remove in production)
+        const testBtn = document.createElement('button');
+        testBtn.textContent = 'Test Star Movement';
+        testBtn.style.position = 'fixed';
+        testBtn.style.bottom = '20px';
+        testBtn.style.right = '20px';
+        testBtn.style.zIndex = '10000';
+        testBtn.style.padding = '10px';
+        testBtn.style.background = 'var(--supernova-red)';
+        testBtn.style.color = 'white';
+        testBtn.style.border = 'none';
+        testBtn.style.borderRadius = '5px';
+        testBtn.style.cursor = 'pointer';
+        testBtn.style.display = 'none'; // Hidden by default
+        testBtn.onclick = testStarMovement;
+        document.body.appendChild(testBtn);
+        
+        // Show test button in development
+        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+            testBtn.style.display = 'block';
+        }
+    });
+
+    // Add CSS for terminal cursor
+    const style = document.createElement('style');
+    style.textContent = `
+        .terminal-cursor {
+            display: inline-block;
+            width: 8px;
+            height: 1.2em;
+            background-color: var(--pulsar-cyan);
+            margin-left: 2px;
+            animation: blink 1s infinite;
+            vertical-align: middle;
+        }
+        
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+    `;
+    document.head.appendChild(style);
 });
